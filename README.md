@@ -1,0 +1,63 @@
+# XAU/USD SMC Vision Analyzer Pro — Siap Deploy Vercel
+
+## Apa yang berubah dari versi asli
+- API key Gemini **tidak lagi** ada di kode frontend (`index.html`).
+- Semua panggilan ke Gemini API sekarang lewat 2 serverless function:
+  - `api/analyze.js` — analisis chart utama (MSS, FVG, OB, IDM, $$$, Position Tool).
+  - `api/ask.js` — fitur chat "Konsultasi Lanjutan".
+- Key disimpan sebagai **Environment Variable** di server, aman dari browser.
+
+## Cara Deploy ke Vercel
+
+### 1. Dapatkan API Key Gemini
+Buat API key gratis di https://aistudio.google.com/apikey (atau ai.google.dev).
+
+### 2. Upload project ke GitHub
+```bash
+cd xau-smc-vercel
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/USERNAME/NAMA-REPO.git
+git push -u origin main
+```
+
+### 3. Import ke Vercel
+1. Buka https://vercel.com/new
+2. Pilih repo GitHub yang tadi di-push.
+3. Framework preset: pilih **"Other"** (tidak perlu build command, karena ini static + serverless functions).
+4. Sebelum klik Deploy, buka bagian **Environment Variables** dan tambahkan:
+   - `GEMINI_API_KEY` = (API key kamu dari langkah 1)
+5. Klik **Deploy**.
+
+### 4. Selesai
+Vercel akan otomatis:
+- Melayani `index.html` sebagai halaman utama.
+- Menjalankan `api/analyze.js` di endpoint `https://<domain-kamu>/api/analyze`.
+- Menjalankan `api/ask.js` di endpoint `https://<domain-kamu>/api/ask`.
+
+## Testing lokal (opsional)
+Kalau mau coba dulu sebelum deploy:
+```bash
+npm install -g vercel
+vercel dev
+```
+Vercel CLI akan minta kamu login & bisa baca `.env` lokal (buat file `.env` dari `.env.example`, isi API key asli, jangan di-commit).
+
+## Struktur folder
+```
+xau-smc-vercel/
+├── index.html          ← frontend (UI + canvas + logic)
+├── api/
+│   ├── analyze.js      ← serverless: analisis chart
+│   └── ask.js           ← serverless: chat follow-up
+├── package.json
+├── vercel.json
+├── .env.example
+└── .gitignore
+```
+
+## Catatan
+- Model default: `gemini-3-flash-preview`. Kalau suatu saat model ini deprecated, tinggal set env var `GEMINI_MODEL` ke model baru — tidak perlu ubah kode.
+- Kalau nanti mau tambah rate-limiting atau auth (biar orang lain nggak pakai API key kamu lewat endpoint publik), bisa ditambahkan di `api/analyze.js` dan `api/ask.js` — tinggal bilang, nanti saya bantu.

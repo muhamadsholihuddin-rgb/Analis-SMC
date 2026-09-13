@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAU/USD SMC Vision Analyzer Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        darkBg: '#090d16',
+                        cardBg: '#101623',
+                        cardBorder: '#1e293b',
+                        smcBos: '#22c55e',
+                        smcChoch: '#a855f7',
+                        smcMss: '#ec4899',
+                        smcFvg: '#f59e0b',
+                        smcIdm: '#eab308',
+                        smcOb: '#3b82f6',
+                        smcLiq: '#06b6d4'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        .glass-panel {
+            background: rgba(16, 22, 35, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .pulse-ring {
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 font-sans min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-black">
+
+    <!-- Header Section -->
+    <header class="border-b border-cardBorder bg-cardBg/90 backdrop-blur sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-amber-500 to-yellow-300 p-2.5 rounded-xl shadow-lg shadow-amber-500/20 text-gray-950 font-black">
+                    <i class="fa-solid fa-chart-line text-lg"></i> XAU
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-wide flex items-center gap-2">
+                        SMC Vision Analyzer <span class="text-amber-400 text-xs font-mono font-bold bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">PRO v2.0</span>
+                    </h1>
+                    <p class="text-xs text-gray-400">Detektor Otomatis MSS, FVG, OB, IDM, $$$ Liquidity & Position Tool (Buy/Sell Limit)</p>
+                </div>
+            </div>
+
+            <!-- Quick Action Tools -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <button id="btnSampleSell" onclick="loadPresetSample('sell')" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-trend-down text-red-400"></i> Sample Sell Limit (Bearish)
+                </button>
+                <button id="btnSampleBuy" onclick="loadPresetSample('buy')" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-trend-up text-green-400"></i> Sample Buy Limit (Bullish)
+                </button>
+                <button id="btnExport" onclick="exportAnnotatedChart()" disabled class="text-xs bg-amber-500 hover:bg-amber-400 text-gray-950 px-3.5 py-1.5 rounded-lg font-bold shadow-lg shadow-amber-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> Unduh Hasil (PNG)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Canvas Viewport & Controls (8 Cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- Upload Container / Canvas Viewport -->
+            <div id="dropZone" class="relative bg-cardBg border-2 border-dashed border-gray-700 hover:border-amber-500/60 rounded-2xl transition overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-4 group shadow-xl">
+                
+                <!-- Empty State Uploader -->
+                <div id="uploadPrompt" class="text-center p-6 flex flex-col items-center">
+                    <div class="w-16 h-16 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition duration-300 border border-amber-500/20">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <h3 class="font-semibold text-base text-gray-200 mb-1">Upload Screenshot Chart XAU/USD</h3>
+                    <p class="text-xs text-gray-400 max-w-md mb-4">
+                        Drag & drop screenshot (TradingView / MT4 / MT5) atau klik untuk memilih file. Sistem akan mendeteksi area entry, SL, TP, FVG, OB, MSS, dan $$$ Liquidity.
+                    </p>
+                    <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                    <button onclick="document.getElementById('fileInput').click()" class="bg-amber-500 hover:bg-amber-400 text-gray-950 px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-amber-500/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-image"></i> Pilih Gambar Chart
+                    </button>
+                </div>
+
+                <!-- Main Canvas (Hidden when empty) -->
+                <div id="canvasContainer" class="relative w-full hidden flex items-center justify-center bg-black/60 rounded-xl overflow-hidden min-h-[440px]">
+                    <canvas id="chartCanvas" class="max-w-full h-auto rounded-lg shadow-2xl cursor-crosshair"></canvas>
+                    
+                    <!-- Overlay Loader -->
+                    <div id="analysisSpinner" class="absolute inset-0 bg-darkBg/90 backdrop-blur-md hidden flex flex-col items-center justify-center z-20">
+                        <div class="relative w-16 h-16 mb-4">
+                            <div class="absolute inset-0 border-4 border-amber-500/20 rounded-full"></div>
+                            <div class="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                            <i class="fa-solid fa-wand-magic-sparkles absolute inset-0 m-auto text-amber-400 w-fit h-fit text-lg"></i>
+                        </div>
+                        <p class="font-bold text-amber-400 text-sm animate-pulse mb-1">Menganalisis Struktur Pasar SMC...</p>
+                        <p class="text-xs text-gray-400">Mendeteksi MSS, FVG, OB, Liquidity Sweeps, & Menyiapkan Position Tool Box</p>
+                    </div>
+                </div>
+
+                <!-- Floating Canvas Actions & Layers Filter Toolbar -->
+                <div id="canvasToolbar" class="absolute bottom-3 left-3 right-3 hidden flex-wrap justify-between items-center bg-gray-900/95 backdrop-blur border border-gray-700/80 p-2.5 rounded-xl z-10 gap-2 shadow-2xl">
+                    <div class="flex items-center gap-1.5 overflow-x-auto text-[11px]">
+                        <span class="text-gray-400 font-bold px-1 text-[10px] uppercase tracking-wider">Layer Filter:</span>
+                        <button onclick="toggleLayer('POS')" id="tagPOS" class="px-2.5 py-1 rounded-md border border-red-500/40 bg-red-500/20 text-red-300 font-bold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-red-400"></span> Position Box (SL/TP)
+                        </button>
+                        <button onclick="toggleLayer('MSS')" id="tagMSS" class="px-2.5 py-1 rounded-md border border-pink-500/40 bg-pink-500/20 text-pink-300 font-bold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-pink-400"></span> MSS / CHoCH
+                        </button>
+                        <button onclick="toggleLayer('OB')" id="tagOB" class="px-2.5 py-1 rounded-md border border-blue-500/40 bg-blue-500/20 text-blue-300 font-bold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-blue-400"></span> OB / Zone
+                        </button>
+                        <button onclick="toggleLayer('FVG')" id="tagFVG" class="px-2.5 py-1 rounded-md border border-amber-500/40 bg-amber-500/20 text-amber-300 font-bold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span> FVG / Imbalance
+                        </button>
+                        <button onclick="toggleLayer('IDM')" id="tagIDM" class="px-2.5 py-1 rounded-md border border-yellow-500/40 bg-yellow-500/20 text-yellow-300 font-bold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-yellow-400"></span> IDM
+                        </button>
+                        <button onclick="toggleLayer('LIQ')" id="tagLIQ" class="px-2.5 py-1 rounded-md border border-cyan-500/40 bg-cyan-500/20 text-cyan-300 font-bold flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400"></span> $$$ Liquidity
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="triggerAnalysis()" class="bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold px-3 py-1 rounded-lg text-xs flex items-center gap-1 transition shadow">
+                            <i class="fa-solid fa-rotate-right"></i> Re-Analyze
+                        </button>
+                        <button onclick="resetImage()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 p-1.5 rounded-lg text-xs" title="Hapus Gambar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Custom Prompt & AI Interactive Chat -->
+            <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-comments text-amber-400"></i> Konsultasi Lanjutan dengan AI Trading Assistant
+                    </label>
+                    <span class="text-[10px] font-mono text-gray-500">Server-side Gemini Proxy</span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="userQuery" placeholder="Contoh: Mengapa SL ditaruh di atas High 4421.00? Berapa R:R setup ini?" 
+                           class="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-xs text-gray-200 focus:outline-none focus:border-amber-500 transition font-sans"
+                           onkeypress="if(event.key==='Enter') askFollowUp()">
+                    <button onclick="askFollowUp()" class="bg-amber-500 hover:bg-amber-400 text-gray-950 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition">
+                        <i class="fa-solid fa-paper-plane"></i> Kirim
+                    </button>
+                </div>
+                <!-- Chat Answer Container -->
+                <div id="aiResponseBox" class="hidden bg-gray-900/90 border border-amber-500/30 rounded-xl p-3 text-xs text-gray-200 leading-relaxed font-sans"></div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: SMC Analysis Dashboard (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-4">
+            
+            <!-- Overall Bias & Market Overview Card -->
+            <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 shadow-xl">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-gray-800">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Bias Utama Pasar</span>
+                    <span id="biasBadge" class="bg-gray-800 text-gray-400 text-xs px-2.5 py-1 rounded-full font-bold border border-gray-700">
+                        Belum Dianalisis
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div class="bg-gray-900/70 p-2.5 rounded-xl border border-gray-800/80">
+                        <span class="text-[10px] text-gray-500 font-medium block">Kekuatan Trend</span>
+                        <span id="trendStrength" class="text-xs font-bold text-gray-200 font-mono">-</span>
+                    </div>
+                    <div class="bg-gray-900/70 p-2.5 rounded-xl border border-gray-800/80">
+                        <span class="text-[10px] text-gray-500 font-medium block">Timeframe Chart</span>
+                        <span id="timeframeEst" class="text-xs font-bold text-gray-200 font-mono">-</span>
+                    </div>
+                </div>
+
+                <div class="text-xs text-gray-300 bg-gray-900/50 p-3 rounded-xl border border-gray-800 leading-relaxed max-h-36 overflow-y-auto" id="summaryText">
+                    Silakan upload screenshot grafik XAU/USD Anda atau pilih sample untuk mendeteksi posisi Buy/Sell Limit, Stop Loss, Take Profit, MSS, FVG, dan Order Block.
+                </div>
+            </div>
+
+            <!-- Trade Setup Box (Order Plan with Execution Badge) -->
+            <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between">
+                    <span><i class="fa-solid fa-crosshairs text-amber-400 me-1.5"></i> Execution Order Plan</span>
+                    <span id="rrBadge" class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-md font-mono font-bold">R:R -</span>
+                </h3>
+
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between items-center bg-gray-900/90 p-2.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 font-medium">Order Type:</span>
+                        <span id="tradeAction" class="font-extrabold text-amber-400 uppercase tracking-wide text-xs">-</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-900/90 p-2.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 font-medium">Entry Zone:</span>
+                        <span id="tradeEntry" class="font-bold text-blue-400 font-mono">-</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-900/90 p-2.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 font-medium">Stop Loss (SL):</span>
+                        <span id="tradeSL" class="font-bold text-red-400 font-mono">-</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-900/90 p-2.5 rounded-xl border border-gray-800">
+                        <span class="text-gray-400 font-medium">Take Profit (TP):</span>
+                        <span id="tradeTP1" class="font-bold text-green-400 font-mono">-</span>
+                    </div>
+                </div>
+
+                <div class="mt-1">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1.5">Faktor Konfluensi SMC:</span>
+                    <ul id="confluenceList" class="text-xs text-gray-300 space-y-1 pl-4 list-disc">
+                        <li>Upload chart untuk melihat detail konfluensi</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Detected SMC Elements List -->
+            <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 shadow-xl flex-1 flex flex-col">
+                <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3 flex items-center justify-between">
+                    <span>Daftar Area Structure & Gap</span>
+                    <span id="structureCount" class="bg-gray-800 text-gray-300 text-[10px] px-2 py-0.5 rounded-full font-mono">0 Area</span>
+                </h3>
+
+                <div id="structuresList" class="space-y-2.5 overflow-y-auto max-h-[300px] pr-1 flex-1">
+                    <div class="text-center text-xs text-gray-500 py-8">
+                        Belum ada struktur terdeteksi.
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Tidak ada API key di sini. Semua panggilan Gemini melewati /api/analyze dan /api/ask (serverless).
+
+        let currentImage = null;
+        let originalImageBase64 = null;
+        let detectedStructures = [];
+        let tradePlan = null;
+        let activeLayers = { POS: true, MSS: true, OB: true, FVG: true, IDM: true, LIQ: true };
+
+        const canvas = document.getElementById('chartCanvas');
+        const ctx = canvas.getContext('2d');
+        const dropZone = document.getElementById('dropZone');
+
+        // Drag & Drop Handlers
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.classList.add('border-amber-500');
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.classList.remove('border-amber-500');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) handleFile(files[0]);
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast("Mohon upload file gambar screenshot yang valid.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                originalImageBase64 = event.target.result;
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    displayImageOnCanvas();
+                    triggerAnalysis();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function displayImageOnCanvas() {
+            if (!currentImage) return;
+
+            document.getElementById('uploadPrompt').classList.add('hidden');
+            document.getElementById('canvasContainer').classList.remove('hidden');
+            document.getElementById('canvasToolbar').classList.remove('hidden');
+            document.getElementById('btnExport').removeAttribute('disabled');
+
+            canvas.width = currentImage.width;
+            canvas.height = currentImage.height;
+
+            redrawCanvas();
+        }
+
+        // Generate Synthetic Sample Charts for immediate testing
+        function loadPresetSample(type) {
+            const sampleCanvas = document.createElement('canvas');
+            sampleCanvas.width = 1100;
+            sampleCanvas.height = 680;
+            const sCtx = sampleCanvas.getContext('2d');
+
+            sCtx.fillStyle = '#0a0e17';
+            sCtx.fillRect(0, 0, 1100, 680);
+            
+            sCtx.strokeStyle = '#1a2333';
+            sCtx.lineWidth = 1;
+            for(let x=0; x<1100; x+=60) { sCtx.beginPath(); sCtx.moveTo(x,0); sCtx.lineTo(x,680); sCtx.stroke(); }
+            for(let y=0; y<680; y+=50) { sCtx.beginPath(); sCtx.moveTo(0,y); sCtx.lineTo(1100,y); sCtx.stroke(); }
+
+            sCtx.fillStyle = '#2d3a4f';
+            sCtx.font = 'bold 36px Inter';
+            sCtx.fillText('XAU/USD 15M (SMC ' + type.toUpperCase() + ' SAMPLE)', 50, 70);
+
+            let p = type === 'sell' ? 220 : 500;
+            for(let i=0; i<40; i++) {
+                const x = 70 + (i * 24);
+                let isBull = type === 'sell' ? (i < 18 || (i > 28 && i < 34)) : (i > 18 || i % 3 !== 0);
+                if (type === 'sell' && i >= 18 && i <= 28) isBull = false;
+                
+                const change = (Math.random() * 30 + 10) * (isBull ? -1 : 1);
+                const open = p;
+                const close = p + change;
+                const high = Math.min(open, close) - (Math.random() * 18);
+                const low = Math.max(open, close) + (Math.random() * 18);
+                p = close;
+
+                sCtx.strokeStyle = isBull ? '#22c55e' : '#ef4444';
+                sCtx.lineWidth = 2;
+                sCtx.beginPath();
+                sCtx.moveTo(x + 7, high);
+                sCtx.lineTo(x + 7, low);
+                sCtx.stroke();
+
+                sCtx.fillStyle = isBull ? '#22c55e' : '#ef4444';
+                sCtx.fillRect(x, Math.min(open, close), 14, Math.abs(close - open) || 4);
+            }
+
+            const dataUrl = sampleCanvas.toDataURL('image/png');
+            originalImageBase64 = dataUrl;
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                displayImageOnCanvas();
+                triggerAnalysis();
+            };
+            img.src = dataUrl;
+        }
+
+        async function triggerAnalysis() {
+            if (!originalImageBase64) return;
+
+            document.getElementById('analysisSpinner').classList.remove('hidden');
+
+            const base64Data = originalImageBase64.split(',')[1];
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64Data })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showToast(data.error || 'Gagal memproses analisis gambar. Silakan coba lagi.');
+                    return;
+                }
+
+                applyAnalysisResults(data);
+            } catch (err) {
+                console.error("API Error:", err);
+                showToast("Terjadi kesalahan analisis: " + err.message);
+            } finally {
+                document.getElementById('analysisSpinner').classList.add('hidden');
+            }
+        }
+
+        function applyAnalysisResults(data) {
+            detectedStructures = data.structures || [];
+            tradePlan = data.tradeSetup;
+
+            const biasBadge = document.getElementById('biasBadge');
+            biasBadge.innerText = data.marketBias || 'NEUTRAL';
+            if (data.marketBias === 'BULLISH') {
+                biasBadge.className = 'bg-green-500/20 text-green-400 border border-green-500/30 text-xs px-2.5 py-1 rounded-full font-bold font-mono';
+            } else if (data.marketBias === 'BEARISH') {
+                biasBadge.className = 'bg-red-500/20 text-red-400 border border-red-500/30 text-xs px-2.5 py-1 rounded-full font-bold font-mono';
+            } else {
+                biasBadge.className = 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs px-2.5 py-1 rounded-full font-bold font-mono';
+            }
+
+            document.getElementById('trendStrength').innerText = data.trendStrength || '-';
+            document.getElementById('timeframeEst').innerText = data.timeframeEstimate || 'Auto';
+            document.getElementById('summaryText').innerText = data.analysisSummary || '';
+
+            if (tradePlan) {
+                document.getElementById('rrBadge').innerText = `R:R ${tradePlan.riskRewardRatio || '1:3'}`;
+                document.getElementById('tradeAction').innerText = tradePlan.recommendation || '-';
+                document.getElementById('tradeEntry').innerText = tradePlan.entryZone || '-';
+                document.getElementById('tradeSL').innerText = tradePlan.stopLoss || '-';
+                document.getElementById('tradeTP1').innerText = tradePlan.takeProfit1 || '-';
+
+                const confList = document.getElementById('confluenceList');
+                confList.innerHTML = '';
+                (tradePlan.keyConfluences || []).forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerText = item;
+                    confList.appendChild(li);
+                });
+            }
+
+            const listEl = document.getElementById('structuresList');
+            listEl.innerHTML = '';
+            document.getElementById('structureCount').innerText = `${detectedStructures.length} Area`;
+
+            detectedStructures.forEach((st, idx) => {
+                const item = document.createElement('div');
+                item.className = "p-2.5 rounded-xl bg-gray-900/90 border border-gray-800 hover:border-gray-700 transition cursor-pointer flex flex-col gap-1 shadow";
+                item.onclick = () => highlightStructureOnCanvas(idx);
+
+                let badgeColor = "bg-gray-700 text-gray-300";
+                const typeUpper = st.type.toUpperCase();
+                if (typeUpper.includes("BOS")) badgeColor = "bg-green-500/20 text-green-400 border border-green-500/30";
+                else if (typeUpper.includes("CHOCH") || typeUpper.includes("MSS")) badgeColor = "bg-pink-500/20 text-pink-400 border border-pink-500/30";
+                else if (typeUpper.includes("FVG")) badgeColor = "bg-amber-500/20 text-amber-400 border border-amber-500/30";
+                else if (typeUpper.includes("IDM")) badgeColor = "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+                else if (typeUpper.includes("OB")) badgeColor = "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+                else if (typeUpper.includes("LIQ")) badgeColor = "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30";
+
+                item.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono ${badgeColor} px-2 py-0.5 rounded-md">${st.label || st.type}</span>
+                        <span class="text-[10px] text-gray-400">Akurasi: ${st.confidence}</span>
+                    </div>
+                    <p class="text-[11px] text-gray-300 leading-tight">${st.explanation}</p>
+                `;
+                listEl.appendChild(item);
+            });
+
+            redrawCanvas();
+        }
+
+        function redrawCanvas() {
+            if (!currentImage) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            detectedStructures.forEach(st => {
+                const type = st.type.toUpperCase();
+
+                if ((type.includes('MSS') || type.includes('CHOCH')) && !activeLayers.MSS) return;
+                if ((type.includes('OB') || type.includes('SUPPLY') || type.includes('DEMAND')) && !activeLayers.OB) return;
+                if ((type.includes('FVG') || type.includes('IMBALANCE') || type.includes('GAP')) && !activeLayers.FVG) return;
+                if (type.includes('IDM') && !activeLayers.IDM) return;
+                if ((type.includes('LIQ') || type.includes('$$$')) && !activeLayers.LIQ) return;
+                if (type.includes('BOS') && !activeLayers.MSS) return;
+
+                const box = st.box;
+                const rx = (box.xmin / 1000) * w;
+                const ry = (box.ymin / 1000) * h;
+                const rw = Math.max(25, ((box.xmax - box.xmin) / 1000) * w);
+                const rh = Math.max(14, ((box.ymax - box.ymin) / 1000) * h);
+
+                ctx.save();
+
+                if (type.includes('FVG') || type.includes('IMBALANCE') || type.includes('GAP')) {
+                    ctx.fillStyle = 'rgba(245, 158, 11, 0.22)';
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 1.5;
+                    ctx.fillRect(rx, ry, rw, rh);
+                    ctx.strokeRect(rx, ry, rw, rh);
+
+                    ctx.fillStyle = '#fef08a';
+                    ctx.font = 'bold 11px JetBrains Mono, sans-serif';
+                    ctx.fillText(st.label || 'OB-GAP / FVG', rx + 6, ry + 15);
+                } 
+                else if (type.includes('OB') || type.includes('SUPPLY') || type.includes('DEMAND')) {
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.25)';
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(rx, ry, rw, rh);
+                    ctx.strokeRect(rx, ry, rw, rh);
+
+                    ctx.fillStyle = '#93c5fd';
+                    ctx.font = 'bold 11px JetBrains Mono, sans-serif';
+                    ctx.fillText(st.label || 'ORDER BLOCK', rx + 6, ry + 15);
+                }
+                else if (type.includes('CHOCH') || type.includes('MSS')) {
+                    const midY = ry + (rh / 2);
+                    ctx.strokeStyle = '#ec4899';
+                    ctx.lineWidth = 2.5;
+                    ctx.setLineDash([4, 2]);
+                    ctx.beginPath();
+                    ctx.moveTo(rx, midY);
+                    ctx.lineTo(rx + rw, midY);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#fbcfe8';
+                    ctx.font = 'bold 11px JetBrains Mono, sans-serif';
+                    ctx.fillText(`⚡ ${st.label || 'LTF CHoCH / MSS'}`, rx + 5, midY - 5);
+                }
+                else if (type.includes('BOS')) {
+                    const midY = ry + (rh / 2);
+                    ctx.strokeStyle = '#22c55e';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(rx, midY);
+                    ctx.lineTo(rx + rw, midY);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#bbf7d0';
+                    ctx.font = 'bold 11px JetBrains Mono, sans-serif';
+                    ctx.fillText(`── ${st.label || 'BOS'} ──►`, rx + (rw/4), midY - 5);
+                }
+                else if (type.includes('IDM')) {
+                    const midX = rx + (rw / 2);
+                    const midY = ry + (rh / 2);
+                    
+                    ctx.fillStyle = '#eab308';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(midX, midY, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#fef08a';
+                    ctx.font = 'bold 11px JetBrains Mono, sans-serif';
+                    ctx.fillText(`💧 ${st.label || 'IDM'}`, midX + 10, midY + 4);
+                }
+                else if (type.includes('LIQ') || type.includes('$$$')) {
+                    ctx.strokeStyle = '#06b6d4';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(rx, ry + rh);
+                    ctx.lineTo(rx + rw, ry);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#67e8f9';
+                    ctx.font = 'bold 12px JetBrains Mono, sans-serif';
+                    ctx.fillText(`$$$ ${st.label || 'Liquidity Pool'}`, rx + (rw/3), ry - 6);
+                }
+                
+                ctx.restore();
+            });
+
+            if (tradePlan && activeLayers.POS) {
+                drawTradingViewPositionBox(w, h);
+            }
+        }
+
+        function drawTradingViewPositionBox(w, h) {
+            const pBox = tradePlan.positionBox;
+            const isSell = (tradePlan.recommendation || '').toUpperCase().includes('SELL');
+
+            let bxMin = pBox ? (pBox.xmin / 1000) * w : w * 0.65;
+            let bxMax = pBox ? (pBox.xmax / 1000) * w : w * 0.88;
+            let entryY = pBox ? (pBox.entryY / 1000) * h : h * 0.38;
+            let slY = pBox ? (pBox.slY / 1000) * h : (isSell ? h * 0.22 : h * 0.52);
+            let tpY = pBox ? (pBox.tpY / 1000) * h : (isSell ? h * 0.75 : h * 0.15);
+
+            const bxWidth = Math.max(120, bxMax - bxMin);
+
+            ctx.save();
+
+            if (isSell) {
+                const slHeight = entryY - slY;
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
+                ctx.fillRect(bxMin, slY, bxWidth, slHeight);
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(bxMin, slY, bxWidth, slHeight);
+
+                const tpHeight = tpY - entryY;
+                ctx.fillStyle = 'rgba(55, 65, 81, 0.45)';
+                ctx.fillRect(bxMin, entryY, bxWidth, tpHeight);
+                ctx.strokeStyle = 'rgba(75, 85, 99, 0.8)';
+                ctx.strokeRect(bxMin, entryY, bxWidth, tpHeight);
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(bxMin, entryY);
+                ctx.lineTo(bxMin + bxWidth, entryY);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#c084fc';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(bxMin - 30, entryY + 40);
+                ctx.lineTo(bxMin + 15, entryY);
+                ctx.lineTo(bxMin + (bxWidth / 2), entryY + 80);
+                ctx.lineTo(bxMin + bxWidth - 15, tpY - 20);
+                ctx.stroke();
+
+                drawPriceBadge(bxMin + bxWidth + 5, slY, `SL ${tradePlan.stopLoss || ''}`, '#ef4444');
+                drawPriceBadge(bxMin + bxWidth + 5, entryY, `SELL LIMIT ${tradePlan.entryZone || ''}`, '#f59e0b');
+                drawPriceBadge(bxMin + bxWidth + 5, tpY, `TP ${tradePlan.takeProfit1 || ''}`, '#22c55e');
+
+            } else {
+                const tpHeight = entryY - tpY;
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+                ctx.fillRect(bxMin, tpY, bxWidth, tpHeight);
+                ctx.strokeStyle = 'rgba(34, 197, 94, 0.8)';
+                ctx.strokeRect(bxMin, tpY, bxWidth, tpHeight);
+
+                const slHeight = slY - entryY;
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
+                ctx.fillRect(bxMin, entryY, bxWidth, slHeight);
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                ctx.strokeRect(bxMin, entryY, bxWidth, slHeight);
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(bxMin, entryY);
+                ctx.lineTo(bxMin + bxWidth, entryY);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(bxMin - 30, entryY - 40);
+                ctx.lineTo(bxMin + 15, entryY);
+                ctx.lineTo(bxMin + (bxWidth / 2), entryY - 80);
+                ctx.lineTo(bxMin + bxWidth - 15, tpY + 20);
+                ctx.stroke();
+
+                drawPriceBadge(bxMin + bxWidth + 5, tpY, `TP ${tradePlan.takeProfit1 || ''}`, '#22c55e');
+                drawPriceBadge(bxMin + bxWidth + 5, entryY, `BUY LIMIT ${tradePlan.entryZone || ''}`, '#3b82f6');
+                drawPriceBadge(bxMin + bxWidth + 5, slY, `SL ${tradePlan.stopLoss || ''}`, '#ef4444');
+            }
+
+            ctx.restore();
+        }
+
+        function drawPriceBadge(x, y, text, colorHex) {
+            ctx.save();
+            ctx.font = 'bold 11px JetBrains Mono, sans-serif';
+            const textWidth = ctx.measureText(text).width + 12;
+            const height = 20;
+
+            ctx.fillStyle = colorHex;
+            ctx.beginPath();
+            ctx.roundRect(x, y - (height / 2), textWidth, height, 4);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(text, x + 6, y + 4);
+            ctx.restore();
+        }
+
+        function highlightStructureOnCanvas(idx) {
+            redrawCanvas();
+            const st = detectedStructures[idx];
+            if (!st) return;
+
+            const w = canvas.width;
+            const h = canvas.height;
+            const box = st.box;
+            const rx = (box.xmin / 1000) * w;
+            const ry = (box.ymin / 1000) * h;
+            const rw = Math.max(25, ((box.xmax - box.xmin) / 1000) * w);
+            const rh = Math.max(14, ((box.ymax - box.ymin) / 1000) * h);
+
+            ctx.save();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(rx - 4, ry - 4, rw + 8, rh + 8);
+            ctx.restore();
+        }
+
+        function toggleLayer(layerKey) {
+            activeLayers[layerKey] = !activeLayers[layerKey];
+            const btn = document.getElementById(`tag${layerKey}`);
+            if (activeLayers[layerKey]) {
+                btn.classList.remove('opacity-40', 'line-through');
+            } else {
+                btn.classList.add('opacity-40', 'line-through');
+            }
+            redrawCanvas();
+        }
+
+        function exportAnnotatedChart() {
+            if (!currentImage) {
+                showToast("Belum ada chart untuk diunduh.");
+                return;
+            }
+            
+            try {
+                redrawCanvas();
+
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        triggerFileDownload(dataUrl);
+                        return;
+                    }
+                    const blobUrl = URL.createObjectURL(blob);
+                    triggerFileDownload(blobUrl);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+                }, 'image/png');
+
+            } catch (err) {
+                console.error("Export error:", err);
+                showToast("Gagal mendownload gambar: " + err.message);
+            }
+        }
+
+        function triggerFileDownload(url) {
+            const link = document.createElement('a');
+            link.download = `XAUUSD_SMC_Analysis_${Date.now()}.png`;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Hasil analisis gambar SMC berhasil diunduh!");
+        }
+
+        async function askFollowUp() {
+            const queryInput = document.getElementById('userQuery');
+            const query = queryInput.value.trim();
+            if (!query || !originalImageBase64) return;
+
+            const resBox = document.getElementById('aiResponseBox');
+            resBox.classList.remove('hidden');
+            resBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Menganalisis pertanyaan Anda...';
+
+            const base64Data = originalImageBase64.split(',')[1];
+
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64Data, query })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    resBox.innerText = data.error || 'Gagal memproses pertanyaan.';
+                    return;
+                }
+
+                resBox.innerHTML = `<strong><i class="fa-solid fa-robot text-amber-400 me-1"></i> Respon AI Assistant:</strong><br>` +
+                    (data.text || '').replace(/\n/g, '<br>');
+            } catch (err) {
+                resBox.innerText = "Gagal memproses pertanyaan: " + err.message;
+            }
+        }
+
+        function resetImage() {
+            currentImage = null;
+            originalImageBase64 = null;
+            detectedStructures = [];
+            tradePlan = null;
+
+            document.getElementById('uploadPrompt').classList.remove('hidden');
+            document.getElementById('canvasContainer').classList.add('hidden');
+            document.getElementById('canvasToolbar').classList.add('hidden');
+            document.getElementById('btnExport').setAttribute('disabled', 'true');
+            document.getElementById('structuresList').innerHTML = '<div class="text-center text-xs text-gray-500 py-8">Belum ada struktur terdeteksi.</div>';
+            document.getElementById('aiResponseBox').classList.add('hidden');
+            document.getElementById('biasBadge').innerText = 'Belum Dianalisis';
+            document.getElementById('biasBadge').className = 'bg-gray-800 text-gray-400 text-xs px-2.5 py-1 rounded-full font-bold border border-gray-700 font-mono';
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-5 right-5 bg-gray-900 border border-amber-500/50 text-amber-300 px-4 py-3 rounded-xl text-xs shadow-2xl z-50 flex items-center gap-2.5 font-sans';
+            toast.innerHTML = `<i class="fa-solid fa-circle-info text-base text-amber-400"></i> <span>${msg}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "xau-smc-vision-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "XAU/USD SMC Vision Analyzer Pro - static frontend + Vercel serverless proxy ke Gemini API",
+  "engines": {
+    "node": ">=18"
+  }
+}
