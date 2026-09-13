@@ -1,15 +1,13 @@
 // api/analyze.js
-// Serverless function (Vercel) — proxy aman ke Gemini API.
+// Serverless function (Vercel) — proxy aman ke Gemini API, dengan rotasi otomatis
+// kalau salah satu API key kena limit kuota (429).
 // API key TIDAK pernah dikirim ke browser; diambil dari environment variable server.
+
+import { callGeminiWithRotation } from './_geminiClient.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY belum diatur di Environment Variables Vercel.' });
   }
 
   const { imageBase64 } = req.body || {};
@@ -107,14 +105,7 @@ Kembalikan hasil analisis persis sesuai JSON Schema. Gunakan koordinat ter-norma
 
   try {
     const model = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
-    const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }
-    );
+    const response = await callGeminiWithRotation(model, payload);
 
     const text = response?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
@@ -124,24 +115,6 @@ Kembalikan hasil analisis persis sesuai JSON Schema. Gunakan koordinat ter-norma
     const parsed = JSON.parse(text);
     return res.status(200).json(parsed);
   } catch (err) {
-    return res.status(500).json({ error: 'Gagal memproses analisis: ' + err.message });
-  }
-}
-
-async function fetchWithRetry(url, options, maxRetries = 3) {
-  let delay = 1000;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(url, options);
-      if (response.ok) return await response.json();
-      if (i === maxRetries - 1) {
-        const errBody = await response.text();
-        throw new Error(`Gemini API error ${response.status}: ${errBody}`);
-      }
-    } catch (e) {
-      if (i === maxRetries - 1) throw e;
-    }
-    await new Promise((r) => setTimeout(r, delay));
-    delay *= 2;
+    return res.status(err.statusCode || 500).json({ error: 'Gagal memproses analisis: ' + err.message });
   }
 }
