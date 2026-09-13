@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XAU/USD SMC Vision Analyzer Pro</title>
+
+    <!-- PWA: manifest & ikon agar bisa diinstal sebagai aplikasi mandiri -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#090d16">
+    <link rel="icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SMC XAU">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
@@ -270,6 +280,13 @@
 
     <!-- JavaScript Application Logic -->
     <script>
+        // Registrasi service worker minimal — hanya syarat agar app bisa di-install, tanpa caching offline.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+
         // Tidak ada API key di sini. Semua panggilan Gemini melewati /api/analyze dan /api/ask (serverless).
 
         let currentImage = null;

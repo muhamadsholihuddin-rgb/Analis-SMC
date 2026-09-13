@@ -45,10 +45,23 @@ vercel dev
 ```
 Vercel CLI akan minta kamu login & bisa baca `.env` lokal (buat file `.env` dari `.env.example`, isi API key asli, jangan di-commit).
 
+## Bisa di-install sebagai aplikasi mandiri
+App ini sudah dilengkapi `manifest.json` + service worker minimal, jadi setelah deploy:
+- **Android/Chrome desktop**: akan muncul ikon "Install" di address bar, atau menu ⋮ > "Install app" / "Add to Home screen".
+- **iOS Safari**: Share button > "Add to Home Screen".
+
+Service worker-nya **tidak melakukan caching offline** — cuma syarat teknis biar browser mau menawarkan opsi install. Jadi kalau dibuka tanpa internet, tetap tidak akan berfungsi (memang bukan tujuannya) — tapi begitu terinstal, app terbuka sebagai jendela mandiri tanpa address bar/toolbar browser, seperti aplikasi asli.
+
 ## Struktur folder
 ```
 xau-smc-vercel/
 ├── index.html          ← frontend (UI + canvas + logic)
+├── manifest.json        ← metadata PWA (nama, ikon, warna)
+├── sw.js                 ← service worker minimal (syarat installability)
+├── icons/
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   └── icon-maskable-512.png
 ├── api/
 │   ├── analyze.js      ← serverless: analisis chart
 │   └── ask.js           ← serverless: chat follow-up
