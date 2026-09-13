@@ -45,6 +45,13 @@ vercel dev
 ```
 Vercel CLI akan minta kamu login & bisa baca `.env` lokal (buat file `.env` dari `.env.example`, isi API key asli, jangan di-commit).
 
+### 5. (Opsional tapi disarankan) Tambah beberapa API key sekaligus
+Kalau kuota gratis satu key sering habis (limit 20 request/hari untuk `gemini-3-flash-preview`), kamu bisa daftar beberapa API key (dari akun Google yang sama atau berbeda), lalu isi env var:
+```
+GEMINI_API_KEYS=key_pertama,key_kedua,key_ketiga
+```
+(pisahkan dengan koma, tanpa spasi). Server otomatis mencoba key berikutnya kalau key yang sedang dipakai kena limit 429 — kamu tidak perlu ganti apa pun secara manual, tinggal tambah key baru ke daftar ini kapan saja lalu redeploy.
+
 ## Bisa di-install sebagai aplikasi mandiri
 App ini sudah dilengkapi `manifest.json` + service worker minimal, jadi setelah deploy:
 - **Android/Chrome desktop**: akan muncul ikon "Install" di address bar, atau menu ⋮ > "Install app" / "Add to Home screen".
@@ -63,6 +70,7 @@ xau-smc-vercel/
 │   ├── icon-512.png
 │   └── icon-maskable-512.png
 ├── api/
+│   ├── _geminiClient.js ← utilitas rotasi multi API key
 │   ├── analyze.js      ← serverless: analisis chart
 │   └── ask.js           ← serverless: chat follow-up
 ├── package.json
