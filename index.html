@@ -96,6 +96,9 @@
                 <button id="btnExport" onclick="exportAnnotatedChart()" disabled class="text-xs bg-amber-500 hover:bg-amber-400 text-gray-950 px-3.5 py-1.5 rounded-lg font-bold shadow-lg shadow-amber-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
                     <i class="fa-solid fa-download"></i> Unduh Hasil (PNG)
                 </button>
+                <button id="btnExportTxt" onclick="exportAnalysisText()" disabled class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 px-3.5 py-1.5 rounded-lg font-bold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-lines"></i> Export Analisis (TXT)
+                </button>
             </div>
         </div>
     </header>
@@ -293,6 +296,7 @@
         let originalImageBase64 = null;
         let detectedStructures = [];
         let tradePlan = null;
+        let lastAnalysisData = null; // simpan seluruh hasil analisis mentah untuk fitur export TXT
         let activeLayers = { POS: true, MSS: true, OB: true, FVG: true, IDM: true, LIQ: true };
 
         const canvas = document.getElementById('chartCanvas');
@@ -350,6 +354,7 @@
             document.getElementById('canvasContainer').classList.remove('hidden');
             document.getElementById('canvasToolbar').classList.remove('hidden');
             document.getElementById('btnExport').removeAttribute('disabled');
+            // btnExportTxt baru diaktifkan setelah analisis selesai (lihat applyAnalysisResults)
 
             canvas.width = currentImage.width;
             canvas.height = currentImage.height;
@@ -442,8 +447,10 @@
         }
 
         function applyAnalysisResults(data) {
+            lastAnalysisData = data;
             detectedStructures = data.structures || [];
             tradePlan = data.tradeSetup;
+            document.getElementById('btnExportTxt').removeAttribute('disabled');
 
             const biasBadge = document.getElementById('biasBadge');
             biasBadge.innerText = data.marketBias || 'NEUTRAL';
@@ -778,6 +785,77 @@
             }
         }
 
+        function exportAnalysisText() {
+            if (!lastAnalysisData) {
+                showToast("Belum ada hasil analisis untuk diekspor.");
+                return;
+            }
+
+            const data = lastAnalysisData;
+            const tp = data.tradeSetup || {};
+            const lines = [];
+
+            lines.push('='.repeat(60));
+            lines.push('XAU/USD SMC VISION ANALYZER PRO - HASIL ANALISIS');
+            lines.push('='.repeat(60));
+            lines.push('Tanggal Export : ' + new Date().toLocaleString('id-ID'));
+            lines.push('');
+
+            lines.push('--- RINGKASAN PASAR ---');
+            lines.push('Bias Utama       : ' + (data.marketBias || '-'));
+            lines.push('Kekuatan Trend   : ' + (data.trendStrength || '-'));
+            lines.push('Timeframe Chart  : ' + (data.timeframeEstimate || '-'));
+            lines.push('');
+
+            lines.push('--- RINGKASAN ANALISIS ---');
+            lines.push(data.analysisSummary || '-');
+            lines.push('');
+
+            lines.push('--- EXECUTION ORDER PLAN ---');
+            lines.push('Order Type       : ' + (tp.recommendation || '-'));
+            lines.push('Entry Zone       : ' + (tp.entryZone || '-'));
+            lines.push('Stop Loss (SL)   : ' + (tp.stopLoss || '-'));
+            lines.push('Take Profit (TP) : ' + (tp.takeProfit1 || '-'));
+            lines.push('Risk:Reward      : ' + (tp.riskRewardRatio || '-'));
+            lines.push('');
+
+            lines.push('--- FAKTOR KONFLUENSI SMC ---');
+            const confluences = tp.keyConfluences || [];
+            if (confluences.length === 0) {
+                lines.push('(tidak ada data konfluensi)');
+            } else {
+                confluences.forEach((c, i) => lines.push(`${i + 1}. ${c}`));
+            }
+            lines.push('');
+
+            lines.push('--- DAFTAR STRUKTUR & GAP TERDETEKSI (' + (data.structures || []).length + ' area) ---');
+            (data.structures || []).forEach((st, idx) => {
+                lines.push('');
+                lines.push(`[${idx + 1}] ${st.label || st.type} (Tipe: ${st.type}, Akurasi: ${st.confidence})`);
+                lines.push('    Alasan: ' + (st.explanation || '-'));
+            });
+
+            lines.push('');
+            lines.push('='.repeat(60));
+            lines.push('Dihasilkan otomatis oleh SMC Vision Analyzer Pro v2.0');
+            lines.push('Catatan: Ini bukan nasihat finansial. Selalu lakukan konfirmasi & manajemen risiko sendiri.');
+            lines.push('='.repeat(60));
+
+            const textContent = lines.join('\n');
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.download = `XAUUSD_SMC_Analisis_${Date.now()}.txt`;
+            link.href = blobUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+            showToast("Hasil analisis teks berhasil diunduh!");
+        }
+
         function triggerFileDownload(url) {
             const link = document.createElement('a');
             link.download = `XAUUSD_SMC_Analysis_${Date.now()}.png`;
@@ -825,11 +903,13 @@
             originalImageBase64 = null;
             detectedStructures = [];
             tradePlan = null;
+            lastAnalysisData = null;
 
             document.getElementById('uploadPrompt').classList.remove('hidden');
             document.getElementById('canvasContainer').classList.add('hidden');
             document.getElementById('canvasToolbar').classList.add('hidden');
             document.getElementById('btnExport').setAttribute('disabled', 'true');
+            document.getElementById('btnExportTxt').setAttribute('disabled', 'true');
             document.getElementById('structuresList').innerHTML = '<div class="text-center text-xs text-gray-500 py-8">Belum ada struktur terdeteksi.</div>';
             document.getElementById('aiResponseBox').classList.add('hidden');
             document.getElementById('biasBadge').innerText = 'Belum Dianalisis';
