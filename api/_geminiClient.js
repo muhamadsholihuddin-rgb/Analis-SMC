@@ -8,15 +8,26 @@
 // Kalau masih pakai nama lama GEMINI_API_KEY (singular), tetap didukung sebagai fallback.
 
 function getApiKeys() {
-  const multi = process.env.GEMINI_API_KEYS; // "key1,key2,key3"
+  const multi = process.env.GEMINI_API_KEYS; // "key1,key2,key3" (toleran juga terhadap newline/spasi/kutip)
   const single = process.env.GEMINI_API_KEY; // kompatibel dengan setup lama
 
   const keys = [];
   if (multi) {
-    multi.split(',').map(k => k.trim()).filter(Boolean).forEach(k => keys.push(k));
+    // Pisah berdasarkan koma ATAU baris baru, buang spasi & tanda kutip yang nyasar.
+    multi
+      .split(/[\n,]+/)
+      .map(k => k.trim().replace(/^["']|["']$/g, ''))
+      .filter(Boolean)
+      .forEach(k => { if (!keys.includes(k)) keys.push(k); });
   }
-  if (single && !keys.includes(single.trim())) {
-    keys.push(single.trim());
+  if (single) {
+    // Toleran kalau orang tidak sengaja taruh banyak key (dipisah koma/baris baru)
+    // di variable singular GEMINI_API_KEY, bukan di GEMINI_API_KEYS yang benar.
+    single
+      .split(/[\n,]+/)
+      .map(k => k.trim().replace(/^["']|["']$/g, ''))
+      .filter(Boolean)
+      .forEach(k => { if (!keys.includes(k)) keys.push(k); });
   }
   return keys;
 }
